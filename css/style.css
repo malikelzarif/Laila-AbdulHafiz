@@ -1541,4 +1541,11 @@ body.rtl .footer-contact ul {
   .menu-toggle {
     display: none !important;
   }
+}.footer-bottom-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
 }
