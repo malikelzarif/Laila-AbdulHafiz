@@ -1549,3 +1549,15 @@ body.rtl .footer-contact ul {
   text-align: center;
   gap: 10px;
 }
+body.rtl .footer-bottom-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center;
+  text-align: center !important;
+}
+
+body.rtl .footer-bottom-inner p {
+  text-align: center !important;
+  width: 100%;
+}
