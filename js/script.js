@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   console.log("script loaded");
 
   const REVIEWS_URL = "https://script.google.com/macros/s/AKfycbxePXS-q4_nRk0BrclyYfkpPMwZYJVs206QcnrOPYOKQo7JIs0a9dieg8-LFoPWTPMkYg/exec";
+  const INITIAL_REVIEWS_COUNT = 3;
 
   const menuToggle = document.querySelector(".menu-toggle");
   const mobileMenu = document.querySelector(".mobile-menu");
@@ -43,6 +44,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const reviewsEn = document.getElementById("Reviews-en");
   const reviewsAr = document.getElementById("Reviews-ar");
+
+  const reviewState = {
+    en: {
+      expanded: false,
+      allReviews: []
+    },
+    ar: {
+      expanded: false,
+      allReviews: []
+    }
+  };
 
   function escapeHtml(value) {
     return String(value || "")
@@ -107,10 +119,82 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
+  function buildReviewCard(review, lang) {
+    const name = escapeHtml(
+      getValue(review, [
+        "Full Name | الأسم كامل",
+        "Full Name | الاسم كامل",
+        "Full Name"
+      ]) || "Anonymous"
+    );
+
+    const rating = Math.max(
+      1,
+      Math.min(
+        Number(
+          getValue(review, [
+            "Rating | التقيم (1 to 5)",
+            "Rating | التقييم (1 to 5)",
+            "Rating (1 to 5)",
+            "Rating"
+          ]) || 5
+        ),
+        5
+      )
+    );
+
+    const text = escapeHtml(
+      getValue(review, [
+        "Your Review | تقيم",
+        "Your Review | تقييم",
+        "Your Review",
+        "Review"
+      ]) || ""
+    );
+
+    const date = escapeHtml(formatDate(review["Timestamp"], lang));
+
+    return `
+      <article class="review-card">
+        <div class="review-header">
+          <div class="review-name">${name}</div>
+          <div class="review-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}</div>
+        </div>
+        <p class="review-text">${text}</p>
+        <div class="review-date">${date}</div>
+      </article>
+    `;
+  }
+
+  function buildViewMoreButton(lang, expanded) {
+    const buttonText = lang === "ar"
+      ? (expanded ? "عرض أقل" : "عرض المزيد")
+      : (expanded ? "View Less" : "View More");
+
+    return `
+      <div class="reviews-more-wrap">
+        <button class="btn btn-secondary reviews-more-btn" type="button" data-lang="${lang}">
+          ${buttonText}
+        </button>
+      </div>
+    `;
+  }
+
+  function attachViewMoreHandler(container, lang) {
+    const button = container.parentElement.querySelector('.reviews-more-btn[data-lang="' + lang + '"]');
+    if (!button) return;
+
+    button.addEventListener("click", function () {
+      reviewState[lang].expanded = !reviewState[lang].expanded;
+      renderReviews(container, reviewState[lang].allReviews, lang);
+    });
+  }
+
   function renderReviews(container, reviews, lang) {
     if (!container) return;
 
-    const approvedReviews = getApprovedReviews(reviews).slice(0, 3);
+    const approvedReviews = getApprovedReviews(reviews);
+    reviewState[lang].allReviews = reviews;
 
     if (!approvedReviews.length) {
       container.innerHTML = `
@@ -118,57 +202,26 @@ document.addEventListener("DOMContentLoaded", function () {
           <p class="review-text">${lang === "ar" ? "لا توجد تقييمات معتمدة بعد." : "No approved reviews yet."}</p>
         </article>
       `;
+
+      const oldWrap = container.parentElement.querySelector(".reviews-more-wrap");
+      if (oldWrap) oldWrap.remove();
       return;
     }
 
-    container.innerHTML = approvedReviews
-      .map(function (review) {
-        const name = escapeHtml(
-          getValue(review, [
-            "Full Name | الأسم كامل",
-            "Full Name | الاسم كامل",
-            "Full Name"
-          ]) || "Anonymous"
-        );
+    const expanded = reviewState[lang].expanded;
+    const visibleReviews = expanded ? approvedReviews : approvedReviews.slice(0, INITIAL_REVIEWS_COUNT);
 
-        const rating = Math.max(
-          1,
-          Math.min(
-            Number(
-              getValue(review, [
-                "Rating | التقيم (1 to 5)",
-                "Rating | التقييم (1 to 5)",
-                "Rating (1 to 5)",
-                "Rating"
-              ]) || 5
-            ),
-            5
-          )
-        );
+    container.innerHTML = visibleReviews.map(function (review) {
+      return buildReviewCard(review, lang);
+    }).join("");
 
-        const text = escapeHtml(
-          getValue(review, [
-            "Your Review | تقيم",
-            "Your Review | تقييم",
-            "Your Review",
-            "Review"
-          ]) || ""
-        );
+    const oldWrap = container.parentElement.querySelector(".reviews-more-wrap");
+    if (oldWrap) oldWrap.remove();
 
-        const date = escapeHtml(formatDate(review["Timestamp"], lang));
-
-        return `
-          <article class="review-card">
-            <div class="review-header">
-              <div class="review-name">${name}</div>
-              <div class="review-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}</div>
-            </div>
-            <p class="review-text">${text}</p>
-            <div class="review-date">${date}</div>
-          </article>
-        `;
-      })
-      .join("");
+    if (approvedReviews.length > INITIAL_REVIEWS_COUNT) {
+      container.insertAdjacentHTML("afterend", buildViewMoreButton(lang, expanded));
+      attachViewMoreHandler(container, lang);
+    }
   }
 
   function renderErrorState() {

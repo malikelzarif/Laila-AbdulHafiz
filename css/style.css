@@ -646,6 +646,12 @@ body.rtl .feature-card::before {
   background: linear-gradient(270deg, var(--gold), rgba(199, 164, 90, 0.1));
 }
 
+.reviews-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
 /* =========================
    SPLIT SECTION
    ========================= */
