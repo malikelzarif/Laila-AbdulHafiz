@@ -47,7 +47,14 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderReviews(container, reviews, emptyText) {
     if (!container) return;
 
-    if (!reviews || !reviews.length) {
+    const approvedReviews = reviews.filter(function (review) {
+      const approvedValue = String(review.Approved || "").trim().toLowerCase();
+      const publishValue = String(review["Can we publish this review on the website? | هل يمكننا نشر هذه المراجعة على الموقع الإلكتروني؟"] || "").trim().toLowerCase();
+
+      return approvedValue === "yes" && publishValue === "yes";
+    });
+
+    if (!approvedReviews.length) {
       container.innerHTML = `
         <article class="review-card">
           <p class="review-text">${emptyText}</p>
@@ -56,15 +63,44 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    container.innerHTML = reviews.slice(0, 3).map(function (review) {
+    container.innerHTML = approvedReviews.slice(0, 3).map(function (review) {
+      const name =
+        review["Full Name | الأسم كامل"] ||
+        review.name ||
+        "Anonymous";
+
+      const rating =
+        Number(review["Rating | التقيم (1 to 5)"] || review.rating || 5);
+
+      const reviewText =
+        review["Your Review | تقيم"] ||
+        review.text ||
+        review.review ||
+        review.message ||
+        review.feedback ||
+        "No review text provided.";
+
+      const rawDate = review.Timestamp || "";
+      let formattedDate = "";
+
+      if (rawDate) {
+        const dateObj = new Date(rawDate);
+        if (!isNaN(dateObj.getTime())) {
+          formattedDate = dateObj.toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric"
+          });
+        }
+      }
+
       return `
         <article class="review-card">
           <div class="review-header">
-            <div class="review-name">${review.name || "Anonymous"}</div>
-            <div class="review-stars">${"★".repeat(Number(review.rating) || 5)}</div>
+            <div class="review-name">${name}</div>
+            <div class="review-stars">${"★".repeat(Math.max(1, Math.min(rating, 5)))}</div>
           </div>
-          <p class="review-text">${review.text || ""}</p>
-          <div class="review-date">${review.date || ""}</div>
+          <p class="review-text">${reviewText}</p>
+          <div class="review-date">${formattedDate}</div>
         </article>
       `;
     }).join("");
@@ -78,6 +114,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return response.json();
     })
     .then(function (reviews) {
+      console.log("reviews data:", reviews);
       renderReviews(reviewsEn, reviews, "No reviews yet.");
       renderReviews(reviewsAr, reviews, "لا توجد تقييمات بعد.");
     })
